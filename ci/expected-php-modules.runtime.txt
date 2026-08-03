@@ -1,0 +1,23 @@
+# Expected modules for fpm/cli runtime variants.
+ctype
+curl
+dom
+fileinfo
+ftp
+iconv
+intl
+mbstring
+mysqlnd
+openssl
+pdo
+pdo_mysql
+pdo_sqlite
+phar
+posix
+simplexml
+sodium
+xml
+xmlreader
+xmlwriter
+zend opcache
+

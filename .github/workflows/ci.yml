@@ -1,0 +1,132 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  define-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      php_versions: ${{ steps.set-matrix.outputs.php_versions }}
+      variants: ${{ steps.set-matrix.outputs.variants }}
+    steps:
+      - name: Set matrix values
+        id: set-matrix
+        run: |
+          # SINGLE SOURCE OF TRUTH:
+          # Maintain supported PHP versions and image variants only here.
+          # validate/publish jobs consume these outputs via fromJSON(...).
+          echo 'php_versions=["8.1","8.3"]' >> "$GITHUB_OUTPUT"
+          echo 'variants=["fpm","cli","dev"]' >> "$GITHUB_OUTPUT"
+
+  validate:
+    runs-on: ubuntu-latest
+    needs: define-matrix
+    strategy:
+      fail-fast: false
+      matrix:
+        php_version: ${{ fromJSON(needs.define-matrix.outputs.php_versions) }}
+        variant: ${{ fromJSON(needs.define-matrix.outputs.variants) }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build image
+        env:
+          IMAGE_TAG: php-cake:${{ matrix.php_version }}-${{ matrix.variant }}
+        run: |
+          docker build \
+            --build-arg PHP_VERSION=${{ matrix.php_version }} \
+            --build-arg VARIANT=${{ matrix.variant }} \
+            -t "$IMAGE_TAG" \
+            .
+
+      - name: Smoke checks
+        env:
+          IMAGE_TAG: php-cake:${{ matrix.php_version }}-${{ matrix.variant }}
+        run: |
+          docker run --rm --entrypoint php "$IMAGE_TAG" -v
+          docker run --rm --entrypoint php "$IMAGE_TAG" -r 'echo "smoke-ok\n";'
+
+      - name: Check expected PHP modules
+        env:
+          IMAGE_TAG: php-cake:${{ matrix.php_version }}-${{ matrix.variant }}
+        run: |
+          chmod +x ci/check-php-modules.sh
+          if [ "${{ matrix.variant }}" = "dev" ]; then
+            ci/check-php-modules.sh \
+              "$IMAGE_TAG" \
+              ci/expected-php-modules.runtime.txt \
+              ci/expected-php-modules.dev-extra.txt
+          else
+            ci/check-php-modules.sh "$IMAGE_TAG" ci/expected-php-modules.runtime.txt
+          fi
+
+      - name: CLI contract checks
+        if: matrix.variant == 'cli'
+        env:
+          IMAGE_TAG: php-cake:${{ matrix.php_version }}-${{ matrix.variant }}
+        run: |
+          uid="$(docker run --rm "$IMAGE_TAG" id -u)"
+          if [ "$uid" -eq 0 ]; then
+            echo "Container command is running as root, expected non-root user" >&2
+            exit 1
+          fi
+
+      - name: Trivy scan (fpm/cli)
+        if: matrix.variant != 'dev'
+        env:
+          IMAGE_TAG: php-cake:${{ matrix.php_version }}-${{ matrix.variant }}
+        run: |
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$HOME/.cache/trivy:/root/.cache/trivy" \
+            aquasec/trivy:0.65.0 image \
+            --exit-code 1 \
+            --severity HIGH,CRITICAL \
+            --no-progress \
+            "$IMAGE_TAG"
+
+  publish:
+    runs-on: ubuntu-latest
+    needs:
+      - validate
+      - define-matrix
+    if: github.ref == 'refs/heads/main'
+    strategy:
+      fail-fast: false
+      matrix:
+        php_version: ${{ fromJSON(needs.define-matrix.outputs.php_versions) }}
+        variant: ${{ fromJSON(needs.define-matrix.outputs.variants) }}
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        env:
+          IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/php-cake
+          IMAGE_TAG: ${{ matrix.php_version }}-${{ matrix.variant }}
+        run: |
+          docker build \
+            --build-arg PHP_VERSION=${{ matrix.php_version }} \
+            --build-arg VARIANT=${{ matrix.variant }} \
+            -t "$IMAGE_NAME:$IMAGE_TAG" \
+            .
+          docker push "$IMAGE_NAME:$IMAGE_TAG"
+
+
