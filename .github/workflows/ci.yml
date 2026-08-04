@@ -70,6 +70,22 @@ jobs:
             ci/check-php-modules.sh "$IMAGE_TAG" ci/expected-php-modules.runtime.txt
           fi
 
+      - name: Dev composer contract checks
+        if: matrix.variant == 'dev'
+        env:
+          IMAGE_TAG: php-cake:${{ matrix.php_version }}-${{ matrix.variant }}
+        run: |
+          chmod +x ci/check-dev-composer.sh
+          ci/check-dev-composer.sh "$IMAGE_TAG"
+
+      - name: Runtime no-composer contract checks
+        if: matrix.variant != 'dev'
+        env:
+          IMAGE_TAG: php-cake:${{ matrix.php_version }}-${{ matrix.variant }}
+        run: |
+          chmod +x ci/check-no-composer.sh
+          ci/check-no-composer.sh "$IMAGE_TAG"
+
       - name: CLI contract checks
         if: matrix.variant == 'cli'
         env:

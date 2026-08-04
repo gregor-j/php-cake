@@ -40,7 +40,7 @@ RUN : "${PHP_VERSION:?Missing required build arg: PHP_VERSION}"; \
 	if [ -f /etc/php/conf.d/10-openssl.ini ]; then mv /etc/php/conf.d/10-openssl.ini /etc/php/conf.d/05-openssl.ini; fi
 
 # Security baseline: non-root runtime user for all variants.
-RUN addgroup -S app && adduser -S -G app app
+RUN addgroup -S app && adduser -S -G app -h /home/app app && mkdir -p /home/app && chown app:app /home/app && chmod 700 /home/app
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
@@ -58,7 +58,7 @@ CMD ["php", "-a"]
 
 FROM base AS runtime-dev
 ARG PHP_VERSION
-RUN apk add --no-cache "php-${PHP_VERSION}-fpm" gettext "php-${PHP_VERSION}-xdebug"
+RUN apk add --no-cache composer "php-${PHP_VERSION}-fpm" gettext "php-${PHP_VERSION}-xdebug"
 COPY xdebug.ini /etc/php/conf.d/99-xdebug-settings.ini
 COPY dev-no-opcache.ini /etc/php/conf.d/99-dev-no-opcache.ini
 COPY php-fpm-nonroot.conf /etc/php/php-fpm.d/zz-nonroot.conf
