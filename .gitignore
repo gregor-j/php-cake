@@ -1,1 +1,12 @@
 /.idea
+# Agent-Anweisungsdateien (lokal, nicht ins Repo)
+/AGENTS.md
+/CLAUDE.md
+/GEMINI.md
+/COPILOT.md
+/.cursorrules
+/.cursor/
+/.windsurfrules
+/.windsurf/
+/.github/copilot-instructions.md
+/.aider*
