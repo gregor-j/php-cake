@@ -11,6 +11,35 @@ Chainguard/Wolfi based PHP image for CakePHP.
 - Keep Docker/Compose host mapping for Linux so PhpStorm is reachable:
   `--add-host=host.docker.internal:host-gateway`
 
+### Xdebug mode
+
+Xdebug is loaded but **inactive by default** (`xdebug.mode=off`).
+This prevents connection errors when no debugger is listening.
+
+Activation is done via the `XDEBUG_MODE` environment variable, which Xdebug 3 reads natively and uses to override the ini value – no separate config file needed.
+
+| Scenario                    | `XDEBUG_MODE` value |
+|-----------------------------|---------------------|
+| Normal operation (inactive) | *(unset or `off`)*  |
+| Debugging (development)     | `debug`             |
+| Coverage (CI pipeline)      | `coverage`          |
+| Both combined               | `debug,coverage`    |
+
+**Examples:**
+
+```yaml
+# docker-compose.yml – persistent activation per service
+services:
+  php:
+    environment:
+      XDEBUG_MODE: debug
+```
+
+```bash
+# One-off invocation – no config change needed
+XDEBUG_MODE=coverage docker-compose exec -T php vendor/bin/phpunit --coverage-text
+```
+
 ## Read-only runtime notes
 
 - `tmpfs` mounts required for `/tmp`, `/run`, `/var/run`, `/var/lib/php/opcache`
