@@ -48,7 +48,7 @@ ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 FROM base AS runtime-fpm
 ARG PHP_VERSION
 RUN apk add --no-cache "php-${PHP_VERSION}-fpm"
-COPY php-fpm-nonroot.conf /etc/php/php-fpm.d/zz-nonroot.conf
+COPY php-fpm.conf /etc/php/php-fpm.d/zz-nonroot.conf
 WORKDIR /app
 CMD ["php-fpm", "-F"]
 
@@ -60,8 +60,8 @@ FROM base AS runtime-dev
 ARG PHP_VERSION
 RUN apk add --no-cache composer "php-${PHP_VERSION}-fpm" gettext "php-${PHP_VERSION}-xdebug"
 COPY xdebug.ini /etc/php/conf.d/99-xdebug-settings.ini
-COPY dev-no-opcache.ini /etc/php/conf.d/99-dev-no-opcache.ini
-COPY php-fpm-nonroot.conf /etc/php/php-fpm.d/zz-nonroot.conf
+COPY opcache.ini /etc/php/conf.d/99-dev-no-opcache.ini
+COPY php-fpm.conf /etc/php/php-fpm.d/zz-nonroot.conf
 WORKDIR /app
 CMD ["php-fpm", "-F"]
 
