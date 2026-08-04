@@ -126,6 +126,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write
 
     steps:
       - name: Checkout
@@ -153,3 +154,28 @@ jobs:
             --push \
             -t "$IMAGE_NAME:$IMAGE_TAG" \
             .
+
+      - name: Install Syft
+        uses: anchore/sbom-action/download-syft@v0
+
+      - name: Generate SBOM (Syft)
+        env:
+          IMAGE_REF: ghcr.io/${{ github.repository_owner }}/php-cake:${{ matrix.php_version }}-${{ matrix.variant }}
+        run: |
+          syft "$IMAGE_REF" -o spdx-json=sbom-${{ matrix.php_version }}-${{ matrix.variant }}.spdx.json
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ matrix.php_version }}-${{ matrix.variant }}
+          path: sbom-${{ matrix.php_version }}-${{ matrix.variant }}.spdx.json
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.8.1
+
+      - name: Sign image with Cosign (keyless)
+        env:
+          IMAGE_REF: ghcr.io/${{ github.repository_owner }}/php-cake:${{ matrix.php_version }}-${{ matrix.variant }}
+        run: |
+          cosign sign --yes "$IMAGE_REF"
+
