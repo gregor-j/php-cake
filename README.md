@@ -2,14 +2,30 @@
 
 Chainguard/Wolfi based PHP image for CakePHP.
 
+PHP Versions available: `8.1`, `8.3`
+
+Variants available:
+- `fpm`/`cli` Production-ready runtime images with no build tools and no Xdebug.
+- `dev` Development image with Xdebug, Composer, and build tools.
+
+**List of images**
+
+| PHP Version | Variant | Image                               |
+|-------------|---------|-------------------------------------|
+| 8.1         | fpm     | `ghcr.io/gregor-j/php-cake:8.1-fpm` |
+| 8.1         | cli     | `ghcr.io/gregor-j/php-cake:8.1-cli` |
+| 8.1         | dev     | `ghcr.io/gregor-j/php-cake:8.1-dev` |
+| 8.3         | fpm     | `ghcr.io/gregor-j/php-cake:8.3-fpm` |
+| 8.3         | cli     | `ghcr.io/gregor-j/php-cake:8.3-cli` |
+| 8.3         | dev     | `ghcr.io/gregor-j/php-cake:8.3-dev` |
+
 ## Xdebug in dev variant
 
 - Xdebug is installed only in `VARIANT=dev`.
 - Composer is installed only in `VARIANT=dev` and uses the `app` user's home at `/home/app` (including `/home/app/.composer`).
 - Project settings are loaded from `xdebug.ini` via `/etc/php/conf.d/99-xdebug-settings.ini`.
 - OPcache is disabled by default in `VARIANT=dev` via `/etc/php/conf.d/99-dev-no-opcache.ini`.
-- Keep Docker/Compose host mapping for Linux so PhpStorm is reachable:
-  `--add-host=host.docker.internal:host-gateway`
+- Keep Docker/Compose host mapping for Linux so PhpStorm is reachable: `--add-host=host.docker.internal:host-gateway`
 
 ### Xdebug mode
 
@@ -43,7 +59,7 @@ XDEBUG_MODE=coverage docker-compose exec -T php vendor/bin/phpunit --coverage-te
 ## Read-only runtime notes
 
 - `tmpfs` mounts required for `/tmp`, `/run`, `/var/run`, `/var/lib/php/opcache`
-- extra non-read-only bind mounts required for `/app/tmp` and `/app/logs` in development environment and `tmpfs` mounts for `/app/tmp` in production environment.
+- extra writeable bind mounts required for `/app/tmp` and `/app/logs` in development environment and `tmpfs` mounts for `/app/tmp` in production environment.
 
 ## CI module contracts
 
@@ -58,5 +74,5 @@ XDEBUG_MODE=coverage docker-compose exec -T php vendor/bin/phpunit --coverage-te
 
 - CI matrix values are maintained in one place (single source of truth):
   `/.github/workflows/ci.yml` in job `define-matrix`.
-- Update supported PHP versions and variants only there.
+- Update supported PHP versions and variants only there!
 
