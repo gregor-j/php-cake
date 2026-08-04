@@ -6,8 +6,14 @@ Chainguard/Wolfi based PHP image for CakePHP.
 
 - Xdebug is installed only in `VARIANT=dev`.
 - Project settings are loaded from `xdebug.ini` via `/etc/php/conf.d/99-xdebug-settings.ini`.
+- OPcache is disabled by default in `VARIANT=dev` via `/etc/php/conf.d/99-dev-no-opcache.ini`.
 - Keep Docker/Compose host mapping for Linux so PhpStorm is reachable:
   `--add-host=host.docker.internal:host-gateway`
+
+## Read-only runtime notes
+
+- `tmpfs` mounts required for `/tmp`, `/run`, `/var/run`, `/var/lib/php/opcache`
+- extra non-read-only bind mounts required for `/app/tmp` and `/app/logs` in development environment and `tmpfs` mounts for `/app/tmp` in production environment.
 
 ## CI module contracts
 

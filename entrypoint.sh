@@ -3,16 +3,34 @@ set -eu
 
 APP_ROOT="${APP_ROOT:-/app}"
 
-# Optional: mappe den Container-User auf Host-UID/GID fuer bind mounts.
-if [ "$(id -u)" -eq 0 ]; then
-  TARGET_GID="${HOST_GID:-$(id -g app)}"
-  TARGET_UID="${HOST_UID:-$(id -u app)}"
+can_write_etc() {
+  test_file="/etc/.entrypoint-write-test.$$"
 
-  if [ "${TARGET_GID}" != "$(id -g app)" ]; then
-      groupmod -o -g "${TARGET_GID}" app
+  if (umask 077 && : > "${test_file}") 2>/dev/null; then
+    rm -f "${test_file}"
+    return 0
   fi
-  if [ "${TARGET_UID}" != "$(id -u app)" ]; then
+
+  return 1
+}
+
+# Optional: mapping container user to host UID/GID for bind mounts.
+if [ "$(id -u)" -eq 0 ]; then
+  CURRENT_GID="$(id -g app)"
+  CURRENT_UID="$(id -u app)"
+
+  if can_write_etc && [ -w /etc/group ] && [ -w /etc/passwd ] && { [ ! -e /etc/shadow ] || [ -w /etc/shadow ]; }; then
+    TARGET_GID="${HOST_GID:-${CURRENT_GID}}"
+    TARGET_UID="${HOST_UID:-${CURRENT_UID}}"
+
+    if [ "${TARGET_GID}" != "${CURRENT_GID}" ]; then
+      groupmod -o -g "${TARGET_GID}" app
+    fi
+    if [ "${TARGET_UID}" != "${CURRENT_UID}" ]; then
       usermod -o -u "${TARGET_UID}" -g "${TARGET_GID}" app
+    fi
+  elif [ -n "${HOST_GID:-}" ] || [ -n "${HOST_UID:-}" ]; then
+    printf "Skipping HOST_UID/HOST_GID remapping because /etc is not writable.\n" >&2
   fi
 fi
 
