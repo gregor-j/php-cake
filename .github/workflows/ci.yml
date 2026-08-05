@@ -34,6 +34,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Check entrypoint hooks
+        run: |
+          chmod +x ci/check-entrypoint-hooks.sh
+          ci/check-entrypoint-hooks.sh .
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 

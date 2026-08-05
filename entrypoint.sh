@@ -2,6 +2,45 @@
 set -eu
 
 APP_ROOT="${APP_ROOT:-/app}"
+ENTRYPOINT_HOOKS_ROOT_DIR="${ENTRYPOINT_HOOKS_ROOT_DIR:-/docker-entrypoint.d/root.d}"
+ENTRYPOINT_HOOKS_APP_DIR="${ENTRYPOINT_HOOKS_APP_DIR:-/docker-entrypoint.d/app.d}"
+
+run_hook_dir() {
+  hook_dir="$1"
+
+  [ -d "${hook_dir}" ] || return 0
+
+  for hook in "${hook_dir}"/*.sh; do
+    [ -e "${hook}" ] || continue
+    [ -f "${hook}" ] || continue
+
+    if [ ! -x "${hook}" ]; then
+      printf 'Skipping non-executable entrypoint hook: %s\n' "${hook}" >&2
+      continue
+    fi
+
+    printf 'Running entrypoint hook: %s\n' "${hook}" >&2
+    "${hook}"
+  done
+}
+
+run_app_hook_dir() {
+  hook_dir="$1"
+
+  [ -d "${hook_dir}" ] || return 0
+
+  if [ "$(id -u)" -eq 0 ]; then
+    su-exec app /usr/local/bin/entrypoint.sh --run-hook-dir "${hook_dir}"
+    return 0
+  fi
+
+  run_hook_dir "${hook_dir}"
+}
+
+run_entrypoint_hooks() {
+  run_hook_dir "${ENTRYPOINT_HOOKS_ROOT_DIR}"
+  run_app_hook_dir "${ENTRYPOINT_HOOKS_APP_DIR}"
+}
 
 can_write_etc() {
   test_file="/etc/.entrypoint-write-test.$$"
@@ -13,6 +52,12 @@ can_write_etc() {
 
   return 1
 }
+
+if [ "${1:-}" = "--run-hook-dir" ]; then
+  shift
+  run_hook_dir "$1"
+  exit 0
+fi
 
 # Optional: mapping container user to host UID/GID for bind mounts.
 if [ "$(id -u)" -eq 0 ]; then
@@ -34,19 +79,7 @@ if [ "$(id -u)" -eq 0 ]; then
   fi
 fi
 
-# Ensure CakePHP writable paths exist on bind mounts before PHP-FPM starts.
-mkdir -p \
-  "${APP_ROOT}/logs" \
-  "${APP_ROOT}/tmp/cache/models" \
-  "${APP_ROOT}/tmp/cache/persistent" \
-  "${APP_ROOT}/tmp/sessions" \
-  "${APP_ROOT}/tmp/tests"
-
-# Rechte nur setzen, wenn als root gestartet.
-if [ "$(id -u)" -eq 0 ]; then
-  chown -R app:app "${APP_ROOT}/logs" "${APP_ROOT}/tmp"
-fi
-chmod -R u+rwX,g+rwX "${APP_ROOT}/logs" "${APP_ROOT}/tmp"
+run_entrypoint_hooks
 
 if [ "$(id -u)" -eq 0 ]; then
   if [ "${1:-}" = "php-fpm" ]; then

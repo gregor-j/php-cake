@@ -42,7 +42,9 @@ RUN : "${PHP_VERSION:?Missing required build arg: PHP_VERSION}"; \
 # Security baseline: non-root runtime user for all variants.
 RUN addgroup -S app && adduser -S -G app -h /home/app app && mkdir -p /home/app && chown app:app /home/app && chmod 700 /home/app
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
+COPY docker-entrypoint.d/ /docker-entrypoint.d/
+RUN chmod +x /usr/local/bin/entrypoint.sh && \
+	find /docker-entrypoint.d -type f -name '*.sh' -exec chmod +x {} +
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
 FROM base AS runtime-fpm

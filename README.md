@@ -61,6 +61,22 @@ XDEBUG_MODE=coverage docker-compose exec -T php vendor/bin/phpunit --coverage-te
 - `tmpfs` mounts required for `/tmp`, `/run`, `/var/run`, `/var/lib/php/opcache`
 - extra writeable bind mounts required for `/app/tmp` and `/app/logs` in development environment and `tmpfs` mounts for `/app/tmp` in production environment.
 
+## Entrypoint hooks
+
+- `entrypoint.sh` is the generic runtime orchestrator for user remapping, hook execution, and final process handoff.
+- Root-level hooks are executed from `/docker-entrypoint.d/root.d/*.sh`.
+- App-level hooks are executed from `/docker-entrypoint.d/app.d/*.sh` as user `app`.
+- Hooks run in lexicographic order and must be executable.
+- The CakePHP writable-path preparation currently lives in `docker-entrypoint.d/root.d/10-cakephp-writable-paths.sh`.
+
+### Adding new hooks
+
+1. Create a new script in the appropriate directory (`root.d/` for root-level initialization, `app.d/` for app-user-level initialization).
+2. Use a numeric prefix to control execution order: `10-name.sh`, `20-name.sh`, etc.
+3. Make the script executable: `chmod +x docker-entrypoint.d/{root,app}.d/XX-name.sh`.
+4. Ensure the script is POSIX/dash-compatible and passes ShellCheck: Run `ci/check-entrypoint-hooks.sh`.
+5. Commit the hook script to version control.
+
 ## CI module contracts
 
 - Expected modules are tracked in:
@@ -69,6 +85,7 @@ XDEBUG_MODE=coverage docker-compose exec -T php vendor/bin/phpunit --coverage-te
 - Validation script: `ci/check-php-modules.sh <image-tag> <expected-modules-file> [<expected-modules-file> ...]`
 - Dev Composer contract: `ci/check-dev-composer.sh <image-tag>`
 - Runtime no-Composer contract: `ci/check-no-composer.sh <image-tag>`
+- Entrypoint hooks check: `ci/check-entrypoint-hooks.sh [repo-root]` (validates executability and ShellCheck compliance)
 
 ## CI matrix maintenance
 
